@@ -36,6 +36,10 @@ if(VCPKG_TARGET_IS_UWP OR (VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE
     # UWP + aom's assembler files result in weirdness and build failures
     # Also, disable assembly on ARM and ARM64 Windows to fix compilation issues.
     set(aom_target_cpu "-DAOM_TARGET_CPU=generic")
+elseif(VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
+    # NASM 3.x changed -Ox multipass behaviour; aom 3.12.1 cmake check fails.
+    # Use generic target to bypass NASM dependency on x64-Windows.
+    set(aom_target_cpu "-DAOM_TARGET_CPU=generic")
 endif()
 
 if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm" AND VCPKG_TARGET_IS_LINUX)

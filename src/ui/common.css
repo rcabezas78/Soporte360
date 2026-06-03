@@ -1,6 +1,6 @@
 html {
-    var(accent): #0071ff;
-    var(button): #2C8CFF;
+    var(accent): #185FA5;
+    var(button): #185FA5;
     var(gray-bg): #eee;
     var(bg): white;
     var(border): #ccc;
@@ -9,13 +9,13 @@ html {
     var(placeholder): #aaa;
     var(lighter-text): #888;
     var(light-text): #666;
-    var(menu-hover): #D7E4F2;
+    var(menu-hover): #E6F1FB;
     var(dark-red): #A72145;
     var(dark-yellow): #FBC732;
     var(dark-blue): #2E2459;
     var(green-blue): #197260;
     var(gray-blue): #2B3439;
-    var(blue-green): #4299bf;
+    var(blue-green): #185FA5;
     var(light-green): #D4EAB7;
     var(dark-green): #5CB85C;
     var(blood-red): #F82600;
