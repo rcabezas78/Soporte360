@@ -159,7 +159,245 @@ fn generate_bindings(
     }
 
     b.generate().unwrap().write_to_file(ffi_rs).unwrap();
+
+    // Post-process: fix structs that LLVM 22 causes bindgen to generate as opaque.
+    // Forward-declared structs leave their layout unresolved in the bindgen IR with LLVM 22.
+    if ffi_rs.file_name().map(|n| n == "vpx_ffi.rs").unwrap_or(false) {
+        fix_opaque_vpx_structs(ffi_rs);
+    }
+    if ffi_rs.file_name().map(|n| n == "aom_ffi.rs").unwrap_or(false) {
+        fix_opaque_aom_structs(ffi_rs);
+    }
+
     fs::copy(ffi_rs, exact_file).ok(); // ignore failure
+}
+
+/// Replace bindgen-generated opaque stubs for vpx_codec_enc_cfg / vpx_codec_dec_cfg
+/// with correct #[repr(C)] definitions extracted from the installed vcpkg headers.
+fn fix_opaque_vpx_structs(path: &Path) {
+    let content = fs::read_to_string(path).expect("cannot read vpx_ffi.rs");
+    if !content.contains("pub _address: u8") {
+        return; // nothing to fix
+    }
+
+    let enc_correct = r#"#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct vpx_codec_enc_cfg {
+    pub g_usage: u32,
+    pub g_threads: u32,
+    pub g_profile: u32,
+    pub g_w: u32,
+    pub g_h: u32,
+    pub g_bit_depth: vpx_bit_depth_t,
+    pub g_input_bit_depth: u32,
+    pub g_timebase: vpx_rational,
+    pub g_error_resilient: vpx_codec_er_flags_t,
+    pub g_pass: vpx_enc_pass,
+    pub g_lag_in_frames: u32,
+    pub rc_dropframe_thresh: u32,
+    pub rc_resize_allowed: u32,
+    pub rc_scaled_width: u32,
+    pub rc_scaled_height: u32,
+    pub rc_resize_up_thresh: u32,
+    pub rc_resize_down_thresh: u32,
+    pub rc_end_usage: vpx_rc_mode,
+    pub rc_twopass_stats_in: vpx_fixed_buf,
+    pub rc_firstpass_mb_stats_in: vpx_fixed_buf,
+    pub rc_target_bitrate: u32,
+    pub rc_min_quantizer: u32,
+    pub rc_max_quantizer: u32,
+    pub rc_undershoot_pct: u32,
+    pub rc_overshoot_pct: u32,
+    pub rc_buf_sz: u32,
+    pub rc_buf_initial_sz: u32,
+    pub rc_buf_optimal_sz: u32,
+    pub rc_2pass_vbr_bias_pct: u32,
+    pub rc_2pass_vbr_minsection_pct: u32,
+    pub rc_2pass_vbr_maxsection_pct: u32,
+    pub rc_2pass_vbr_corpus_complexity: u32,
+    pub kf_mode: vpx_kf_mode,
+    pub kf_min_dist: u32,
+    pub kf_max_dist: u32,
+    pub ss_number_layers: u32,
+    pub ss_enable_auto_alt_ref: [::std::os::raw::c_int; 5usize],
+    pub ss_target_bitrate: [u32; 5usize],
+    pub ts_number_layers: u32,
+    pub ts_target_bitrate: [u32; 5usize],
+    pub ts_rate_decimator: [u32; 5usize],
+    pub ts_periodicity: u32,
+    pub ts_layer_id: [u32; 16usize],
+    pub layer_target_bitrate: [u32; 12usize],
+    pub temporal_layering_mode: ::std::os::raw::c_int,
+    pub use_vizier_rc_params: ::std::os::raw::c_int,
+    pub active_wq_factor: vpx_rational,
+    pub err_per_mb_factor: vpx_rational,
+    pub sr_default_decay_limit: vpx_rational,
+    pub sr_diff_factor: vpx_rational,
+    pub kf_err_per_mb_factor: vpx_rational,
+    pub kf_frame_min_boost_factor: vpx_rational,
+    pub kf_frame_max_boost_first_factor: vpx_rational,
+    pub kf_frame_max_boost_subs_factor: vpx_rational,
+    pub kf_max_total_boost_factor: vpx_rational,
+    pub gf_max_total_boost_factor: vpx_rational,
+    pub gf_frame_max_boost_factor: vpx_rational,
+    pub zm_factor: vpx_rational,
+    pub rd_mult_inter_qp_fac: vpx_rational,
+    pub rd_mult_arf_qp_fac: vpx_rational,
+    pub rd_mult_key_qp_fac: vpx_rational,
+}"#;
+
+    let dec_correct = r#"#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct vpx_codec_dec_cfg {
+    pub threads: u32,
+    pub w: u32,
+    pub h: u32,
+}"#;
+
+    // Replace opaque stubs (with any preceding #[repr]/#[derive] attributes)
+    let re_enc = regex::Regex::new(
+        r"(?:#\[[^\]]*\]\s*)*pub struct vpx_codec_enc_cfg \{\s*pub _address: u8,\s*\}"
+    ).unwrap();
+    let re_dec = regex::Regex::new(
+        r"(?:#\[[^\]]*\]\s*)*pub struct vpx_codec_dec_cfg \{\s*pub _address: u8,\s*\}"
+    ).unwrap();
+
+    let fixed = re_enc.replace(&content, enc_correct);
+    let fixed = re_dec.replace(&fixed, dec_correct);
+
+    fs::write(path, fixed.as_ref()).expect("cannot write fixed vpx_ffi.rs");
+}
+
+/// Replace opaque stubs in aom_ffi.rs: cfg_options and aom_codec_enc_cfg.
+fn fix_opaque_aom_structs(path: &Path) {
+    let content = fs::read_to_string(path).expect("cannot read aom_ffi.rs");
+    if !content.contains("pub _address: u8") {
+        return;
+    }
+
+    let cfg_correct = r#"#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cfg_options {
+    pub init_by_cfg_file: u32,
+    pub super_block_size: u32,
+    pub max_partition_size: u32,
+    pub min_partition_size: u32,
+    pub disable_ab_partition_type: u32,
+    pub disable_rect_partition_type: u32,
+    pub disable_1to4_partition_type: u32,
+    pub disable_flip_idtx: u32,
+    pub disable_cdef: u32,
+    pub disable_lr: u32,
+    pub disable_obmc: u32,
+    pub disable_warp_motion: u32,
+    pub disable_global_motion: u32,
+    pub disable_dist_wtd_comp: u32,
+    pub disable_diff_wtd_comp: u32,
+    pub disable_inter_intra_comp: u32,
+    pub disable_masked_comp: u32,
+    pub disable_one_sided_comp: u32,
+    pub disable_palette: u32,
+    pub disable_intrabc: u32,
+    pub disable_cfl: u32,
+    pub disable_smooth_intra: u32,
+    pub disable_filter_intra: u32,
+    pub disable_dual_filter: u32,
+    pub disable_intra_angle_delta: u32,
+    pub disable_intra_edge_filter: u32,
+    pub disable_tx_64x64: u32,
+    pub disable_smooth_inter_intra: u32,
+    pub disable_inter_inter_wedge: u32,
+    pub disable_inter_intra_wedge: u32,
+    pub disable_paeth_intra: u32,
+    pub disable_trellis_quant: u32,
+    pub disable_ref_frame_mv: u32,
+    pub reduced_reference_set: u32,
+    pub reduced_tx_type_set: u32,
+}"#;
+
+    let enc_correct = r#"#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct aom_codec_enc_cfg {
+    pub g_usage: u32,
+    pub g_threads: u32,
+    pub g_profile: u32,
+    pub g_w: u32,
+    pub g_h: u32,
+    pub g_limit: u32,
+    pub g_forced_max_frame_width: u32,
+    pub g_forced_max_frame_height: u32,
+    pub g_bit_depth: aom_bit_depth_t,
+    pub g_input_bit_depth: u32,
+    pub g_timebase: aom_rational,
+    pub g_error_resilient: aom_codec_er_flags_t,
+    pub g_pass: aom_enc_pass,
+    pub g_lag_in_frames: u32,
+    pub rc_dropframe_thresh: u32,
+    pub rc_resize_mode: u32,
+    pub rc_resize_denominator: u32,
+    pub rc_resize_kf_denominator: u32,
+    pub rc_superres_mode: aom_superres_mode,
+    pub rc_superres_denominator: u32,
+    pub rc_superres_kf_denominator: u32,
+    pub rc_superres_qthresh: u32,
+    pub rc_superres_kf_qthresh: u32,
+    pub rc_end_usage: aom_rc_mode,
+    pub rc_twopass_stats_in: aom_fixed_buf,
+    pub rc_firstpass_mb_stats_in: aom_fixed_buf,
+    pub rc_target_bitrate: u32,
+    pub rc_min_quantizer: u32,
+    pub rc_max_quantizer: u32,
+    pub rc_undershoot_pct: u32,
+    pub rc_overshoot_pct: u32,
+    pub rc_buf_sz: u32,
+    pub rc_buf_initial_sz: u32,
+    pub rc_buf_optimal_sz: u32,
+    pub rc_2pass_vbr_bias_pct: u32,
+    pub rc_2pass_vbr_minsection_pct: u32,
+    pub rc_2pass_vbr_maxsection_pct: u32,
+    pub fwd_kf_enabled: ::std::os::raw::c_int,
+    pub kf_mode: aom_kf_mode,
+    pub kf_min_dist: u32,
+    pub kf_max_dist: u32,
+    pub sframe_dist: u32,
+    pub sframe_mode: u32,
+    pub large_scale_tile: u32,
+    pub monochrome: u32,
+    pub full_still_picture_hdr: u32,
+    pub save_as_annexb: u32,
+    pub tile_width_count: ::std::os::raw::c_int,
+    pub tile_height_count: ::std::os::raw::c_int,
+    pub tile_widths: [::std::os::raw::c_int; 64usize],
+    pub tile_heights: [::std::os::raw::c_int; 64usize],
+    pub use_fixed_qp_offsets: u32,
+    pub fixed_qp_offsets: [::std::os::raw::c_int; 5usize],
+    pub encoder_cfg: cfg_options,
+}"#;
+
+    let dec_correct = r#"#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct aom_codec_dec_cfg {
+    pub threads: u32,
+    pub w: u32,
+    pub h: u32,
+    pub allow_lowbitdepth: u32,
+}"#;
+
+    // cfg_options is not emitted by bindgen (regex filters it out); inject it
+    // right before aom_codec_enc_cfg which depends on it.
+    let enc_with_cfg = format!("{}\n\n{}", cfg_correct, enc_correct);
+
+    let re_dec = regex::Regex::new(
+        r"(?:#\[[^\]]*\]\s*)*pub struct aom_codec_dec_cfg \{\s*pub _address: u8,\s*\}"
+    ).unwrap();
+    let re_enc = regex::Regex::new(
+        r"(?:#\[[^\]]*\]\s*)*pub struct aom_codec_enc_cfg \{\s*pub _address: u8,\s*\}"
+    ).unwrap();
+
+    let fixed = re_dec.replace(&content, dec_correct);
+    let fixed = re_enc.replace(&fixed, enc_with_cfg.as_str());
+
+    fs::write(path, fixed.as_ref()).expect("cannot write fixed aom_ffi.rs");
 }
 
 fn gen_vcpkg_package(package: &str, ffi_header: &str, generated: &str, regex: &str) {

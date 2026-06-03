@@ -63,10 +63,6 @@
       "host": true,
       "features": [
         {
-          "name": "amf",
-          "platform": "((windows | linux) & static)"
-        },
-        {
           "name": "nvcodec",
           "platform": "((windows | linux) & static)"
         },
@@ -96,10 +92,6 @@
     {
       "name": "ffnvcodec",
       "version": "12.1.14.0"
-    },
-    {
-      "name": "amd-amf",
-      "version": "1.4.35"
     }
   ]
 }

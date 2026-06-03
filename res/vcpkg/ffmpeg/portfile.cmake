@@ -108,9 +108,6 @@ if(VCPKG_TARGET_IS_LINUX)
 --enable-encoder=hevc_nvenc \
 --enable-hwaccel=h264_nvdec \
 --enable-hwaccel=hevc_nvdec \
---enable-amf  \
---enable-encoder=h264_amf \
---enable-encoder=hevc_amf \
 --enable-hwaccel=h264_vaapi \
 --enable-hwaccel=hevc_vaapi \
 --enable-encoder=h264_vaapi \
@@ -138,9 +135,6 @@ elseif(VCPKG_TARGET_IS_WINDOWS)
 --enable-hwaccel=hevc_d3d11va \
 --enable-hwaccel=h264_d3d11va2 \
 --enable-hwaccel=hevc_d3d11va2 \
---enable-amf \
---enable-encoder=h264_amf \
---enable-encoder=hevc_amf \
 --enable-encoder=h264_nvenc \
 --enable-encoder=hevc_nvenc \
 --enable-libmfx \
