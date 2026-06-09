@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soporte360 - Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #222;
+    }
+
+    header {
+      background: linear-gradient(135deg, #185FA5, #e242bc);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+    header span { font-size: 0.85rem; opacity: 0.85; }
+
+    #status-bar {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 0.5rem 2rem;
+      font-size: 0.82rem;
+      color: #555;
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+    #status-bar b { color: #185FA5; }
+
+    main { padding: 1.5rem 2rem; }
+
+    .group-section { margin-bottom: 2rem; }
+    .group-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #185FA5;
+      border-left: 4px solid #e242bc;
+      padding-left: 0.6rem;
+      margin-bottom: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      width: 220px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      border-top: 3px solid #ccc;
+      transition: box-shadow 0.2s;
+      position: relative;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.13); }
+    .card.online  { border-top-color: #22c55e; }
+    .card.offline { border-top-color: #ef4444; }
+
+    .card-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 3rem;
+    }
+    .card-ip {
+      font-size: 0.78rem;
+      color: #777;
+      margin-bottom: 0.4rem;
+      font-family: monospace;
+    }
+    .card-id {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-bottom: 0.2rem;
+    }
+    .card-os {
+      font-size: 0.72rem;
+      color: #bbb;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      position: absolute;
+      top: 0.8rem;
+      right: 0.8rem;
+    }
+    .badge.online  { background: #dcfce7; color: #166534; }
+    .badge.offline { background: #fee2e2; color: #991b1b; }
+
+    .btn-row {
+      margin-top: 0.6rem;
+      display: flex;
+      gap: 0.4rem;
+    }
+    .connect-btn {
+      flex: 1;
+      padding: 0.35rem;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .connect-btn:hover { background: #0e4070; }
+    .connect-btn:disabled { background: #ddd; color: #aaa; cursor: default; }
+    .rdp-btn {
+      padding: 0.35rem 0.6rem;
+      background: #0e7490;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .rdp-btn:hover { background: #0a5368; }
+
+    #countdown { font-size: 0.78rem; color: #999; }
+
+    #error-msg {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Soporte360 - Dashboard</h1>
+  <span id="last-update">Cargando...</span>
+</header>
+
+<div id="error-msg"></div>
+
+<div id="status-bar">
+  <span>Total: <b id="stat-total">0</b></span>
+  <span>Online: <b id="stat-online" style="color:#22c55e">0</b></span>
+  <span>Offline: <b id="stat-offline" style="color:#ef4444">0</b></span>
+  <span id="countdown"></span>
+</div>
+
+<main id="main"></main>
+
+<script>
+  const API_BASE = "http://100.85.203.15:8080";
+  let countdownVal = 30;
+  let timer;
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} en ${url}`);
+    return res.json();
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("error-msg");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("error-msg").style.display = "none";
+  }
+
+  // Construye lista de equipos combinando Tailscale + clients.json
+  function buildEquipos(tsData, clients) {
+    // Índice de clients.json por IP Tailscale
+    const clientsByIP = {};
+    for (const c of clients) {
+      if (c.ip) clientsByIP[c.ip.trim()] = c;
+    }
+
+    const equipos = [];
+
+    // 1. Agregar todos los peers de Tailscale (incluyendo Self)
+    const peers = tsData.Peer ? Object.values(tsData.Peer) : [];
+    if (tsData.Self) peers.push({ ...tsData.Self, _isSelf: true });
+
+    for (const peer of peers) {
+      const ip    = (peer.TailscaleIPs && peer.TailscaleIPs[0]) || "";
+      const nombre = peer.HostName || peer.DNSName || ip || "Desconocido";
+      const online = peer.Online === true || peer._isSelf === true;
+      const os    = peer.OS || "";
+
+      const client = clientsByIP[ip] || {};
+
+      equipos.push({
+        nombre:     client.nombre || nombre,
+        ip,
+        online,
+        os,
+        soporte_id: client.soporte_id || "",
+        grupo:      client.grupo || ""
+      });
+
+      // Marca como procesado
+      if (ip) delete clientsByIP[ip];
+    }
+
+    // 2. Agregar clientes registrados que NO están en Tailscale
+    for (const c of Object.values(clientsByIP)) {
+      equipos.push({
+        nombre:     c.nombre || c.ip || "Desconocido",
+        ip:         c.ip || "",
+        online:     false,
+        os:         "",
+        soporte_id: c.soporte_id || "",
+        grupo:      c.grupo || ""
+      });
+    }
+
+    return equipos;
+  }
+
+  function getGrupo(equipo) {
+    return equipo.grupo && equipo.grupo.trim() !== "" ? equipo.grupo.trim() : "Sin grupo";
+  }
+
+  async function render() {
+    let tsData = {}, clients = [];
+
+    try {
+      [tsData, clients] = await Promise.all([
+        fetchJSON(`${API_BASE}/tailscale-status`),
+        fetchJSON(`${API_BASE}/clients.json`)
+      ]);
+      hideError();
+    } catch (e) {
+      showError("Error al conectar con el servidor: " + e.message);
+      document.getElementById("last-update").textContent = "Error";
+      return;
+    }
+
+    const equipos = buildEquipos(tsData, clients);
+
+    // Estadísticas
+    const totalOnline  = equipos.filter(e => e.online).length;
+    const totalOffline = equipos.filter(e => !e.online).length;
+
+    document.getElementById("stat-total").textContent   = equipos.length;
+    document.getElementById("stat-online").textContent  = totalOnline;
+    document.getElementById("stat-offline").textContent = totalOffline;
+    document.getElementById("last-update").textContent  =
+      "Actualizado: " + new Date().toLocaleTimeString("es-AR");
+
+    // Agrupar
+    const grouped = {};
+    for (const eq of equipos) {
+      const g = getGrupo(eq);
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(eq);
+    }
+
+    // Ordenar: online primero dentro de cada grupo
+    for (const g of Object.keys(grouped)) {
+      grouped[g].sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
+    }
+
+    const main = document.getElementById("main");
+    main.innerHTML = "";
+
+    if (equipos.length === 0) {
+      main.innerHTML = '<p style="color:#999;font-style:italic;padding:2rem 0">No hay equipos detectados.</p>';
+      return;
+    }
+
+    // "Sin grupo" siempre al final
+    const orden = Object.keys(grouped).sort((a, b) => {
+      if (a === "Sin grupo") return 1;
+      if (b === "Sin grupo") return -1;
+      return a.localeCompare(b);
+    });
+
+    for (const grupo of orden) {
+      const items = grouped[grupo];
+      const section = document.createElement("div");
+      section.className = "group-section";
+      section.innerHTML = `<div class="group-title">${grupo} <span style="font-weight:400;font-size:0.8rem;color:#999">(${items.length})</span></div>`;
+
+      const cards = document.createElement("div");
+      cards.className = "cards";
+
+      for (const eq of items) {
+        const sc  = eq.online ? "online" : "offline";
+        const sl  = eq.online ? "Online"  : "Offline";
+        const hasId = eq.soporte_id && eq.soporte_id.trim() !== "";
+
+        const card = document.createElement("div");
+        card.className = `card ${sc}`;
+        card.innerHTML = `
+          <span class="badge ${sc}">${sl}</span>
+          <div class="card-name" title="${eq.nombre}">${eq.nombre}</div>
+          <div class="card-ip">${eq.ip || "—"}</div>
+          ${hasId
+            ? `<div class="card-id">ID: ${eq.soporte_id}</div>`
+            : `<div class="card-id" style="color:#ddd">Sin ID Soporte360</div>`}
+          ${eq.os ? `<div class="card-os">${eq.os}</div>` : ""}
+          <div class="btn-row">
+            <button class="connect-btn" ${!hasId ? "disabled" : ""}
+              onclick="conectar('${eq.soporte_id}')">
+              ${hasId ? "Conectar" : "Sin ID"}
+            </button>
+            ${eq.ip ? `<button class="rdp-btn" onclick="rdp('${eq.ip}','${eq.nombre.replace(/'/g,'')}')">RDP</button>` : ""}
+          </div>
+        `;
+        cards.appendChild(card);
+      }
+
+      section.appendChild(cards);
+      main.appendChild(section);
+    }
+  }
+
+  function conectar(id) {
+    if (!id) return;
+    window.open(`soporte360://${id}`, "_blank");
+  }
+
+  function rdp(ip, nombre) {
+    if (!ip) return;
+    const contenido = [
+      "full address:s:" + ip,
+      "prompt for credentials:i:1",
+      "screen mode id:i:2",
+      "use multimon:i:0",
+      "desktopwidth:i:1920",
+      "desktopheight:i:1080",
+      "session bpp:i:32",
+      "compression:i:1",
+      "keyboardhook:i:2",
+      "audiocapturemode:i:0",
+      "videoplaybackmode:i:1",
+      "connection type:i:7",
+      "networkautodetect:i:1",
+      "bandwidthautodetect:i:1",
+      "displayconnectionbar:i:1",
+      "enableworkspacereconnect:i:0",
+      "disable wallpaper:i:0",
+      "allow font smoothing:i:1",
+      "allow desktop composition:i:1",
+      "redirectprinters:i:0",
+      "redirectclipboard:i:1",
+      "redirectsmartcards:i:0",
+      "redirectwebauthn:i:1",
+      "autoreconnection enabled:i:1",
+      "authentication level:i:2",
+      "negotiate security layer:i:1",
+    ].join("\r\n");
+
+    const blob = new Blob([contenido], { type: "application/x-rdp" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = (nombre || ip) + ".rdp";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function startCountdown() {
+    clearInterval(timer);
+    countdownVal = 30;
+    document.getElementById("countdown").textContent = `Actualiza en ${countdownVal}s`;
+    timer = setInterval(() => {
+      countdownVal--;
+      document.getElementById("countdown").textContent = `Actualiza en ${countdownVal}s`;
+      if (countdownVal <= 0) {
+        render();
+        countdownVal = 30;
+      }
+    }, 1000);
+  }
+
+  render();
+  startCountdown();
+</script>
+</body>
+</html>

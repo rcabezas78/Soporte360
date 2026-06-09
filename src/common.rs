@@ -2082,6 +2082,11 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
 }
 
 pub fn load_custom_client() {
+    {
+        let mut defaults = config::DEFAULT_SETTINGS.write().unwrap();
+        defaults.entry("relay-server".to_owned()).or_insert_with(|| "100.85.203.15:21117".to_owned());
+        defaults.entry("api-server".to_owned()).or_insert_with(|| "http://100.85.203.15:21114".to_owned());
+    }
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
