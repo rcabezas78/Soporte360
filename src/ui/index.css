@@ -50,7 +50,7 @@ body {
 .left-pane > div:nth-child(1) {
     border-spacing: 1em;
     padding: 20px;
-    padding-bottom: 60px; /* reserve space for bottom connect-status */
+    padding-bottom: 30px; /* reserve space for bottom connect-status */
 }
 
 .left-pane > div.connect-status {
@@ -339,7 +339,7 @@ svg#edit {
 
 div.install-me, div.trust-me {
     margin-top: 0.5em;
-    padding: 20px;
+    padding: 12px;
     color: white;
     background: linear-gradient(left,#e242bc,#f4727c);
 }
@@ -354,6 +354,7 @@ div.install-me > div:nth-child(1) {
 
 div.install-me > div:nth-child(2) {
     line-height: 1.4em;
+    font-size: 0.82em;
 }
 
 #install-me.link {
