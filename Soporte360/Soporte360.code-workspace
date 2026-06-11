@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"name": "Soporte360",
+			"path": "Fuente"
+		}
+	],
+	"settings": {
+		"git.detectSubmodules": true,
+		"git.detectSubmodulesLimit": 10
+	}
+}

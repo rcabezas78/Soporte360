@@ -1,0 +1,53 @@
+[
+  {
+    "nombre": "EAD-Rcabezas2026",
+    "ip": "100.127.33.75",
+    "soporte_id": "",
+    "grupo": "Univeridad Maza",
+    "alias": "EAD-Rcabezas"
+  },
+  {
+    "nombre": "NETESCUELA",
+    "ip": "100.110.164.56",
+    "soporte_id": "191117862",
+    "grupo": "Escuela 4-159",
+    "alias": ""
+  },
+  {
+    "nombre": "NETBOOK-ETEL",
+    "ip": "100.75.61.73",
+    "soporte_id": "262799361",
+    "grupo": "Escuela 4-201",
+    "alias": "Secretaria"
+  },
+  {
+    "nombre": "ATI-RCABEZAS",
+    "ip": "100.119.183.46",
+    "soporte_id": "268304385",
+    "grupo": "Univeridad Maza",
+    "alias": "ATI-Rcabezas",
+    "password": "NGYHa3sK"
+  },
+  {
+    "nombre": "EAD-RCABEZAS",
+    "ip": "100.124.178.48",
+    "soporte_id": "335444982",
+    "grupo": "",
+    "alias": "",
+    "password": "sX3mFaSh"
+  },
+  {
+    "nombre": "RCABEZAS",
+    "ip": "100.85.203.15",
+    "soporte_id": "1382412716",
+    "grupo": "",
+    "alias": ""
+  },
+  {
+    "nombre": "ASUS-RODIGO",
+    "ip": "100.86.190.101",
+    "soporte_id": "1457978735",
+    "grupo": "",
+    "alias": ""
+  }
+]
