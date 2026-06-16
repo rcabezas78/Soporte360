@@ -1313,7 +1313,8 @@ event click $(li#login) (_, me) {
 function self.closing() {
     var (x, y, w, h) = view.box(#rectw, #border, #screen);
     handler.closing(x, y, w, h);
-    return true;
+    view.windowState = View.WINDOW_HIDDEN;
+    return undefined;
 }
 
 function self.ready() {
