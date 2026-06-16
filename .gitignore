@@ -57,6 +57,7 @@ vcpkg_installed
 flutter/lib/generated_plugin_registrant.dart
 libsciter.dylib
 flutter/web/
+FinanzasFamiliares/
 instalar_soporte360_cliente.bat
 *.bat
 config.secret.ps1
