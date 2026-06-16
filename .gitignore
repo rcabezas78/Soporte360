@@ -59,3 +59,6 @@ libsciter.dylib
 flutter/web/
 instalar_soporte360_cliente.bat
 *.bat
+config.secret.ps1
+config.secret.iss
+*.secret.*
