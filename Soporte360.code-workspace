@@ -1,0 +1,12 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "git.ignoredRepositories": [
+            "D:\\Sistemas\\Soporte360\\Fuente\\libs\\hbb_common"
+        ]
+    }
+}
